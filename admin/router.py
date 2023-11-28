@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Request, Form, status, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
-from .models import Category, SubCategory
+from .models import Category, SubCategory, Brand
 from passlib.context import CryptContext
-from .pydentic_modules import CategoryItme, CategoryUpdate, CategoryDelete, SubCategoryItems, SubCategoryUpdate, CubCategorDelete
+from .pydentic_modules import CategoryItme, CategoryUpdate, CategoryDelete, SubCategoryItems, SubCategoryUpdate, CubCategorDelete, BrandItems, BrandUpdate, BrandDelete
 
 # pip install slugify
 from slugify import slugify
@@ -206,4 +206,34 @@ async def delete_subcategory(data:CubCategorDelete=Depends()):
         return {"status":True, "obj":subcategory_obj, "message":"Subcategory successfully deleted"}
     else:
         return {"status":False, "message":"Invalid Subcategory ID"}
+    
+@router.post('/brand/')
+async def create_brand(data:BrandItems):
+    # brand_obj = await Brand.create(**data.__dict__)
+    if await Brand.exists(brand_name=data.name):
+        return {"status":False, "message":"Brand Name Already Exists"}
+    else:
+        brand_obj = await Brand.create(brand_name=data.name)
+        return brand_obj
+
+@router.get('/brand/')
+async def get_brand():
+    brands = await Brand.all()
+    return brands
+
+@router.put('/brand/')
+async def update_brand(data:BrandUpdate):
+    if await Brand.exists(id=data.id):
+        brand_obj = await Brand.filter(id=data.id).update(brand_name=data.name)
+        return brand_obj
+    else:
+        return {"status":False, "message":"Invalid Brand ID"}
+    
+@router.delete('/brand/')
+async def delete_brand(data:BrandDelete):
+    if await Brand.exists(id=data.id):
+        await Brand.filter(id=data.id).delete()
+        return {"status":True,"message":"Brand Successfull Deleted"}
+    else:
+        return {"status":False, "message":"Invalid Brand ID"}
     

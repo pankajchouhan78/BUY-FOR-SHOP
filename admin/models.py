@@ -24,3 +24,9 @@ class SubCategory(Model):
     is_active = fields.BooleanField(default=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
+
+class Brand(Model):
+    id = fields.IntField(pk=True)
+    brand_name = fields.CharField(200, unique=True)
+    is_active = fields.BooleanField(default=True)
+    created_at = fields.DatetimeField(auto_now_add=True)

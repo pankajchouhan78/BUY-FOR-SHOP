@@ -20,3 +20,11 @@ class SubCategoryUpdate(BaseModel):
     description:str
 class CubCategorDelete(BaseModel):
     id:int
+
+
+class BrandItems(BaseModel):
+    name:str
+class BrandUpdate(BrandItems):
+    id:int
+class BrandDelete(BaseModel):
+    id:int
