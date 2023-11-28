@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Request, Form, status, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
-from .models import *
+from .models import Category, SubCategory
 from passlib.context import CryptContext
-from .pydentic_modules import CategoryItme, CategoryUpdate, CategoryDelete
+from .pydentic_modules import CategoryItme, CategoryUpdate, CategoryDelete, SubCategoryItems, SubCategoryUpdate, CubCategorDelete
 
 # pip install slugify
 from slugify import slugify
@@ -11,6 +11,7 @@ from fastapi_login import LoginManager
 SECRET = 'your-secret-key'
 
 import os
+from datetime import datetime
 
 router = APIRouter()
 
@@ -119,4 +120,90 @@ async def delete_category(data:CategoryDelete):
         await category_obj.delete()
         return category_obj
     else:
-        return {"status":False,"message":"Invalid ID"}
+        return {"status":False,"message":"Invalid ID"}   
+@router.post('/subcategory/')
+async def create_subcategory(data:SubCategoryItems=Depends(),
+                             sub_cate_image:UploadFile=File(...)):
+    if await Category.exists(id=data.category_id):
+        category_obj = await Category.get(id=data.category_id)
+        print (category_obj)
+
+        if await SubCategory.exists(name = data.name):
+            return {"status":False, "message":"Sub-Category Already Exists"}
+        else:
+
+            FILEPATH = "static/images/subcategory/"
+            os.makedirs(FILEPATH, exist_ok=True)
+
+            file_name = sub_cate_image.filename
+            image_name = file_name.split('.')[0]
+            extension = file_name.split('.')[1]
+
+            if extension not in ['png','jpg','jpeg']:
+                return {"status":False,"message":"Invalid File Type"}
+            
+            dt = datetime.now()
+            dt_timestamp = round(datetime.timestamp(dt))
+
+            modify_image_name = image_name + "_" + str(dt_timestamp) + "." + extension
+            generated_name = FILEPATH + modify_image_name
+            file_content = await sub_cate_image.read()
+
+            with open(generated_name, 'bw') as file:
+                file.write(file_content)
+                file.close()
+
+            sub_cate_obj = await SubCategory.create(
+                category = category_obj,
+                sub_cate_image = generated_name,
+                name = data.name,
+                sub_cate_description = data.description,
+            )
+            return sub_cate_obj
+    else:
+        return {"status":False,"message":"Invalid Category ID"}
+@router.get('/subcategory/')
+async def get_subcategory():
+    subcategory_obj = await SubCategory.all()
+    return subcategory_obj
+@router.put("/subcategory/")
+async def update_subcategory(data:SubCategoryUpdate = Depends(),
+                            sub_cate_image:UploadFile = File(...)):
+    if await SubCategory.exists(id=data.id):
+        FILEPATH = "static/images/subcategory/"
+        os.makedirs(FILEPATH, exist_ok=True)
+
+        file_name = sub_cate_image.filename
+        image_name = file_name.split('.')[0]
+        extention = file_name.split('.')[1]
+
+        if extention not in ['png','jpg','jpeg']:
+            return {"status":False, "message":"Invalid File Type"}
+        
+        dt = datetime.now()
+        dt_timestamp = round(datetime.timestamp(dt))
+        
+        modify_image_name = image_name + "_" + str(dt_timestamp) + "." + extention
+        generated_name = FILEPATH + modify_image_name
+        file_content = await sub_cate_image.read()
+
+        with open(generated_name, 'wb') as file:
+            file.write(file_content)
+            file.close()
+
+        subcategory_obj = await SubCategory.filter(id=data.id).update(
+            sub_cate_image = generated_name,
+            name = data.name,
+            sub_cate_description = data.description,
+        )
+        return subcategory_obj
+    else:
+        return {"status":False, "message":"Invalid Subcategory ID"}  
+@router.delete('/subcategory/')
+async def delete_subcategory(data:CubCategorDelete=Depends()):
+    if await SubCategory.exists(id=data.id):
+        subcategory_obj = await SubCategory.filter(id=data.id).delete()
+        return {"status":True, "obj":subcategory_obj, "message":"Subcategory successfully deleted"}
+    else:
+        return {"status":False, "message":"Invalid Subcategory ID"}
+    

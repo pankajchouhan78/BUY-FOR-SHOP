@@ -15,3 +15,12 @@ class Category(Model):
     updated_at = fields.DatetimeField(auto_now=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
+class SubCategory(Model):
+    id = fields.IntField(pk=True)
+    category = fields.ForeignKeyField("models.Category", related_name='subcategory', on_delete="CASCADE")
+    name = fields.CharField(200, unique=True)
+    sub_cate_image = fields.TextField()
+    sub_cate_description = fields.TextField()
+    is_active = fields.BooleanField(default=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
