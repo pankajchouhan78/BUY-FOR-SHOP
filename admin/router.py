@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Request, Form, status, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
 from .models import Category, SubCategory, Brand
+from .models import Product, ProductGallaryImages
 from passlib.context import CryptContext
-from .pydentic_modules import CategoryItme, CategoryUpdate, CategoryDelete, SubCategoryItems, SubCategoryUpdate, CubCategorDelete, BrandItems, BrandUpdate, BrandDelete
+from .pydentic_modules import CategoryItme, CategoryUpdate, CategoryDelete
+from .pydentic_modules import SubCategoryItems, SubCategoryUpdate, CubCategorDelete
+from .pydentic_modules import BrandItems, BrandUpdate, BrandDelete, ProductItems
 
 # pip install slugify
 from slugify import slugify
@@ -236,4 +239,137 @@ async def delete_brand(data:BrandDelete):
         return {"status":True,"message":"Brand Successfull Deleted"}
     else:
         return {"status":False, "message":"Invalid Brand ID"}
+
+
+async def upload_video(video):
+    FILEPATH = "static/product_vedio/"
+
+    if not os.path.isdir(FILEPATH):
+        os.mkdir(FILEPATH)
+
+    file_name = video.filename
+    video_name = file_name.split('.')[0]
+    extention = file_name.split('.')[1]
+
+    if extention not in ['mp4','MOV','WMV',"AVI"]:
+        return {"status":False, "message":"Video extention not allowed"}
+        
+    dt = datetime.now()
+    dt_timestamp = round(datetime.timestamp(dt))
+        
+    modify_video_name = video_name + "_" + str(dt_timestamp) + "." + extention
+    generated_name = FILEPATH + modify_video_name
+    file_content = await video.read()
+
+    with open(generated_name, 'wb') as file:
+            file.write(file_content)
+            file.close()  
+    return generated_name
+
+async def upload_image(img):
+    FILEPATH = "static/images/product_images/"
+    if not os.path.isdir(FILEPATH):
+        os.mkdir(FILEPATH)
+
+    filename = img.filename
+    image_name = filename.split('.')[0]
+    extention = filename.split('.')[1]
+    if extention not in ['jpg','png', "jpeg"]:
+        return {"status":False, "message":"Image Extension Not Allowed"}
+                
+    dt = datetime.now()
+    dt_timestamp = round(datetime.timestamp(dt))
+
+    modified_image_name = image_name + "_" + str(dt_timestamp) + "." + extention
+    generated_name = FILEPATH + modified_image_name
+    file_content = await img.read()
+
+    with open(generated_name, "wb") as file:
+        file.write(file_content)
+        file.close()
+    return generated_name
+@router.post("/product/")
+async def add_product(data:ProductItems=Depends(),
+                      video: UploadFile = File(...),
+                      product_image: UploadFile = File(...),
+                      gallary_image: UploadFile = File(...)):
+
+    try:
+        if await Category.exists(id=data.category_id):
+            category_obj = await Category.get(id=data.category_id)
+        else:
+            return {"status":False, "message":"Invalid Category ID"}
+    
+        if await SubCategory.exists(id=data.subcategory_id):
+            subcategory_obj = await SubCategory.get(id=data.subcategory_id)
+        else:
+            return {"status":False, "message":"Invalid Subcategory ID"}
+    
+        if await Brand.exists(id=data.brand_id):
+            brand_obj = await Brand.get(id=data.brand_id)
+        else:
+            return {"status":False, "message":"Invalid Brand ID"}
+
+        if await Product.exists(product_name=data.product_name):
+            return {"status":False, "message":"Product Already Exists"}
+        else:
+            image_url = await upload_image(product_image)
+            video_url = await upload_video(video)
+
+            product_obj = await Product.create(
+                product_name = data.product_name,
+                product_image = image_url,
+                video = video_url,
+                category = category_obj,
+                subcategory = subcategory_obj,
+                brand = brand_obj,
+                manufacturing = data.manufacturing,
+                description = data.description,
+                length = data.length,
+                width = data.width,
+                height = data.height,
+                weight = data.weight,
+                hsn_code = data.hsn_code,
+                mrp_price = data.mrp_price,
+                base_price = data.base_price,
+                offer_price = data.offer_price,
+                model_number = data.model_number,
+                product_code = data.product_code,
+                gst = data.gst
+            )
+
+            if product_obj:
+                gallery_image= await upload_image(gallary_image)
+                await ProductGallaryImages.create(
+                    product = product_obj,
+                    image = gallery_image,
+                )
+                return {"status":True, "message":"product added", "object":product_obj}
+            else:
+                return {"status":False,"message":"something went"}
+
+
+
+            #     print("enter if ")
+            #     for image in gallary_image:
+            #         print("enter in forloop")
+            #         await ProductGallaryImages.create(
+            #             product=product_obj,
+            #             image= image 
+            #         )
+            #     return {"status":True, "message":"product added"}
+            # else:
+            #     print("enter else block")
+            #     return {"status":False, "message":"something went wrong"}
+            
+    except Exception as ex:
+        return (str(ex))
+
+
+@router.get('/product')
+async def get_product():
+    return await Product.all()
+
+
+
     
